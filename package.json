@@ -1,9 +1,9 @@
 {
-  "name": "hero",
+  "name": "sehero",
   "version": "0.0.0",
   "private": true,
   "author": "Nelson Liu <nelsliu9121@gmail.com>",
-  "description": "Make it your slave",
+  "description": "Make me your slave, master.",
   "dependencies": {
     "hubot": "^2.19.0",
     "hubot-diagnostics": "0.0.1",
