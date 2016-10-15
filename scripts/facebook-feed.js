@@ -2,9 +2,7 @@
 
 /**
  * Facebook Feed
- * TODO: Check false pages
  * TODO: Option - Only fetch posts with images
- * TODO: Fetch multiple posts
  * TODO: Save instance
  * TODO: Remove subscription, show all subscriptions, remove room
  */
@@ -64,29 +62,42 @@ var Subscription = (function() {
         console.log("Errors getting url: " + url);
         return false;
       }
-      return scrape(body, ['#recent div div div:nth-child(1) div:nth-child(2) div:nth-child(2) a', 'title'], function(result) {
-        if (result[0] != null) {
-          self.name = result[1].text().trim();
-          var link = result[0].attr('href');
-          var roomId = self.room.id;
-          var path = link.split('?')[0];
-          var subPaths = path.split('/');
 
-          if (subPaths[1] === self.page) {
-            if (subPaths.length > 2) {
-              if (subPaths[2] === 'photos') {
-                link = path;
+      var selectors = ['title'];
+      for (var i = 1; i <= 5; i++) {
+        selectors.push('#recent div div div:nth-child(' + i + ') div:nth-child(2) div:nth-child(2) a');
+      }
+
+      return scrape(body, selectors, function(result) {
+        if (result[1].text().trim() !== '') {
+          self.name = result[0].text().trim();
+          var newPostIndex = result.length - 1;
+          for (var i = 1; i < result.length; i++) {
+            var link = result[i].attr('href');
+            var roomId = self.room.id;
+            var path = link.split('?')[0];
+            var subPaths = path.split('/');
+
+            if (subPaths[1] === self.page) {
+              if (subPaths.length > 2) {
+                if (subPaths[2] === 'photos') {
+                  link = path;
+                }
               }
+            } else if (subPaths[1] === 'story.php') {
+              var params = getParameters(link);
+              link = '/' + self.page + '/posts/' + params['story_fbid'];
             }
-          } else if (subPaths[1] === 'story.php') {
-            var params = getParameters(link);
-            link = '/' + self.page + '/posts/' + params['story_fbid'];
-          } else {
-            return false;
+
+            result[i].link = link;
+
+            if (self.lastLink === link) {
+              newPostIndex = i - 1;
+            }
           }
 
-          if (self.lastLink !== link) {
-            self.lastLink = link;
+          for (var i = newPostIndex; i >= 1; i--) {
+            var link = result[i].link;
             robot.logger.info('Sending message to room: ' + roomId);
             robot.emit(
               'telegram:invoke',
@@ -100,11 +111,16 @@ var Subscription = (function() {
                 }
                 robot.logger.debug(response);
             });
-            return true;
+
+            if (i == 1) {
+              self.lastLink = link;
+            }
           }
-          return false;
+
+          return true;
         } else {
-          robot.logger.warning("Errors scraping url: " + url);
+          robot.logger.warning("Facebook Feed: Can't find page " + self.page);
+          self.room.removeSubscription(self.page);
           return false;
         }
       });
