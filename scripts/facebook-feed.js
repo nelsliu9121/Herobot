@@ -2,24 +2,24 @@
 
 /**
  * Facebook Feed
- * TODO: Option - Only fetch posts with images
- * TODO: Save instance
  * TODO: Remove subscription, show all subscriptions, remove room
+ * TODO: Option - Only fetch posts with images
  */
 
 var request = require('request');
 var jsdom = require('jsdom');
 var jquery = 'https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js';
 
+var roomDataPath = 'github.nelsliu9121.herobot/facebook-feed/rooms';
 var facebookURL = 'https://facebook.com';
 var facebookMobileURL = 'https://m.facebook.com';
 
 var Subscription = (function() {
-  function Subscription(room, page) {
+  function Subscription(room, page, name, lastLink) {
     this.room = room;
     this.page = page;
-    this.name = '';
-    this.lastLink = '';
+    this.name = name || '';
+    this.lastLink = lastLink || '';
   }
 
   function scrape(body, selectors, callback) {
@@ -59,7 +59,7 @@ var Subscription = (function() {
       }
     }, function(err, res, body) {
       if (err) {
-        console.log("Errors getting url: " + url);
+        robot.logger.warning("Errors getting url: " + url);
         return false;
       }
 
@@ -131,9 +131,9 @@ var Subscription = (function() {
 })();
 
 var Room = (function() {
-  function Room(id) {
+  function Room(id, subscriptions) {
     this.id = id;
-    this.subscriptions = new Map();
+    this.subscriptions = subscriptions || new Map();
   }
 
   Room.prototype.addSubscription = function(page) {
@@ -155,7 +155,45 @@ var Room = (function() {
 
 module.exports = function(robot) {
   var linkDelay = 30;
-  var rooms = new Map();
+  var firstTime = true;
+  var rooms;
+
+  function save() {
+    var data = [];
+    for (var room of rooms.values()) {
+      var roomData = [];
+      roomData.push(room.id);
+      var subscriptions = [];
+      for (var subscription of room.subscriptions.values()) {
+        var subscriptionData = [];
+        subscriptionData.push(subscription.page);
+        subscriptionData.push(subscription.name);
+        subscriptionData.push(subscription.lastLink);
+        subscriptions.push(subscriptionData);
+      }
+      roomData.push(subscriptions);
+      data.push(roomData);
+    }
+    robot.brain.set(roomDataPath, data);
+    robot.brain.save();
+  }
+
+  function load() {
+    rooms = new Map();
+    var data = robot.brain.get(roomDataPath);
+    if (data != null) {
+      for (var i = 0; i < data.length; i++) {
+        var roomData = data[i];
+        var room = new Room(roomData[0], new Map());
+        rooms.set(room.id, room);
+        for (var j = 0; j < roomData[1].length; j++) {
+          var subscriptionData = roomData[1][j];
+          var subscription = new Subscription(room, subscriptionData[0], subscriptionData[1], subscriptionData[2]);
+          room.subscriptions.set(subscription.page, subscription);
+        }
+      }
+    }
+  }
 
   function subscribePage(res, page) {
     var id = res.message.room;
@@ -169,6 +207,7 @@ module.exports = function(robot) {
     var subscription = room.addSubscription(page);
     if (subscription != null) {
       subscription.fetch(robot);
+      setTimeout(save, 5000);
     }
   }
 
@@ -178,16 +217,28 @@ module.exports = function(robot) {
         subscription.fetch(robot);
       }
     }
+
+    setTimeout(save, 5000);
   }
 
-  setInterval(checkSubscriptions, 30000);
-
-  robot.hear(/fbfeed (.*)/i, function(res) {
-    var args = res.match[1].split(' ');
-    if (args[0] === "subscribe") {
-      if (args.length > 1) {
-        subscribePage(res, args[1]);
-      }
+  robot.brain.on('loaded', function() {
+    if (!firstTime) {
+      return;
     }
+
+    firstTime = false;
+    load();
+
+    checkSubscriptions();
+    setInterval(checkSubscriptions, 30000);
+
+    robot.hear(/fbfeed (.*)/i, function(res) {
+      var args = res.match[1].split(' ');
+      if (args[0] === "subscribe") {
+        if (args.length > 1) {
+          subscribePage(res, args[1]);
+        }
+      }
+    });
   });
 }
