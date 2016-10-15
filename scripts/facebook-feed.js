@@ -4,6 +4,7 @@
  * Facebook Feed
  * TODO: Check false pages
  * TODO: Option - Only fetch posts with images
+ * TODO: Fetch multiple posts
  * TODO: Save instance
  * TODO: Remove subscription, show all subscriptions, remove room
  */
@@ -12,12 +13,12 @@ var request = require('request');
 var jsdom = require('jsdom');
 var jquery = 'https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js';
 
-var facebookURL = 'https://m.facebook.com';
+var facebookURL = 'https://facebook.com';
 var facebookMobileURL = 'https://m.facebook.com';
 
 var Subscription = (function() {
-  function Subscription(roomId, page) {
-    this.roomId = roomId;
+  function Subscription(room, page) {
+    this.room = room;
     this.page = page;
     this.name = '';
     this.lastLink = '';
@@ -37,6 +38,19 @@ var Subscription = (function() {
     });
   }
 
+  function getParameters(url) {
+    var queryDict = {};
+    var strs = url.split('?');
+    if (strs.length > 1) {
+      strs[1].split('&').forEach(function(item) {
+        var kv = item.split('=');
+        queryDict[kv[0]] = kv[1];
+      });
+    }
+
+    return queryDict;
+  }
+
   Subscription.prototype.fetch = function(robot) {
     var self = this;
     var url = facebookMobileURL + '/' + self.page;
@@ -50,18 +64,35 @@ var Subscription = (function() {
         console.log("Errors getting url: " + url);
         return false;
       }
-      return scrape(body, ['#recent div div:first div:nth-child(2) div:nth-child(2) a', 'title'], function(result) {
+      return scrape(body, ['#recent div div div:nth-child(1) div:nth-child(2) div:nth-child(2) a', 'title'], function(result) {
         if (result[0] != null) {
           self.name = result[1].text().trim();
-          var link = facebookURL + result[0].attr('href');
+          var link = result[0].attr('href');
+          var roomId = self.room.id;
+          var path = link.split('?')[0];
+          var subPaths = path.split('/');
+
+          if (subPaths[1] === self.page) {
+            if (subPaths.length > 2) {
+              if (subPaths[2] === 'photos') {
+                link = path;
+              }
+            }
+          } else if (subPaths[1] === 'story.php') {
+            var params = getParameters(link);
+            link = '/' + self.page + '/posts/' + params['story_fbid'];
+          } else {
+            return false;
+          }
+
           if (self.lastLink !== link) {
             self.lastLink = link;
-            robot.logger.info('Sending message to room: ' + self.roomId);
+            robot.logger.info('Sending message to room: ' + roomId);
             robot.emit(
               'telegram:invoke',
               'sendMessage', {
-                chat_id: self.roomId,
-                text: '[' + self.name + '](' + link + ')',
+                chat_id: roomId,
+                text: '[' + self.name + '](' + facebookURL + link + ')',
                 parse_mode: 'Markdown'
               }, function (error, response) {
                 if (error) {
@@ -94,7 +125,7 @@ var Room = (function() {
       return null;
     }
 
-    var subscription = new Subscription(this.id, page);
+    var subscription = new Subscription(this, page);
     this.subscriptions.set(page, subscription);
     return subscription;
   };
