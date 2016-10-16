@@ -117,7 +117,7 @@ var Subscription = (function() {
                 chat_id: roomId,
                 text: '[' + self.name + '](' + facebookURL + link + ')',
                 parse_mode: 'Markdown',
-                disable_notification: true
+                disable_notification: 'true'
               }, function (error, response) {
                 if (error) {
                   robot.logger.error(error);
