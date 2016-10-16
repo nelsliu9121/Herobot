@@ -1,8 +1,13 @@
 'use strict'
 
-/**
- * Facebook Feed
- */
+// Description:
+//   Facebook Feed
+//
+// Configuration:
+//   HUBOT_TELEGRAM_FACEBOOK_FEED_INTERVAL: optional, defaults to 120000 (2 minutes)
+//
+// Author:
+//   Yonsh Lin <yonsh@live.com>
 
 var request = require('request');
 var jsdom = require('jsdom');
