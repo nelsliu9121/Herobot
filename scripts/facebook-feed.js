@@ -59,7 +59,7 @@ var Subscription = (function() {
     return queryDict;
   }
 
-  Subscription.prototype.fetch = function(robot, silent) {
+  Subscription.prototype.fetch = function(robot, silent, removeFalse) {
     var self = this;
     var url = facebookMobileURL + '/' + self.page;
     return request({
@@ -138,20 +138,22 @@ var Subscription = (function() {
         } else {
           robot.logger.warning(logPrefix + "Can't find page " + self.page);
           robot.logger.warning(logPrefix + 'Body:\n' + body);
-          self.room.removeSubscription(self.page);
-          robot.logger.info('Sending message to room: ' + roomId);
-          robot.emit(
-            'telegram:invoke',
-            'sendMessage', {
-              chat_id: roomId,
-              text: messagePrefix + "Unable to find `" + self.page + "`. Unsubscribed.",
-              parse_mode: 'Markdown'
-            }, function (error, response) {
-              if (error) {
-                robot.logger.error(error);
-              }
-              robot.logger.debug(response);
-          });
+          if (removeFalse) {
+            self.room.removeSubscription(self.page);
+            robot.logger.info('Sending message to room: ' + roomId);
+            robot.emit(
+              'telegram:invoke',
+              'sendMessage', {
+                chat_id: roomId,
+                text: messagePrefix + "Unable to find `" + self.page + "`. Unsubscribed.",
+                parse_mode: 'Markdown'
+              }, function (error, response) {
+                if (error) {
+                  robot.logger.error(error);
+                }
+                robot.logger.debug(response);
+            });
+          }
           return false;
         }
       });
@@ -267,7 +269,7 @@ module.exports = function(robot) {
     if (subscription != null) {
       sendMessage(res, messagePrefix + 'Subscribing to `' + page + '`.');
       subscription.imageOnly = imageOnly;
-      subscription.fetch(robot);
+      subscription.fetch(robot, false, true);
       setTimeout(save, 5000);
     }
   }
