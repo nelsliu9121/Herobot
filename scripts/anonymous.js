@@ -8,8 +8,8 @@ var roomId = process.env.HUBOT_TELEGRAM_ANONYMOUS_ROOM_ID;
 
 if (roomId != null) {
   module.exports = function(robot) {
-    robot.respond(/anon (.*)/i, function(res){
-      var msg = res.match[1];
+    robot.respond(/anon /i, function(res){
+      var msg = res.message.text.substring(8);
 
       if (msg !== '') {
         robot.emit(
