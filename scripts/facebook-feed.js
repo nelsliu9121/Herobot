@@ -307,6 +307,7 @@ module.exports = function(robot) {
 
     room.removeSubscription(page);
     sendMessage(res, messagePrefix + 'Unsubscribed from `' + page + '`.');
+    save();
   }
 
   function showSubscriptions(res) {
@@ -329,6 +330,7 @@ module.exports = function(robot) {
   function unsubscribeAll(res) {
     rooms.delete(res.message.room);
     sendMessage(res, messagePrefix + 'Unsubscribed from all subscriptions.');
+    save();
   }
 
   function sendUsage(res) {
