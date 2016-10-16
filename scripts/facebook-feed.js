@@ -311,6 +311,16 @@ module.exports = function(robot) {
                      '      Unsubscribe from all subscriptions.');
   }
 
+  function removeAllRooms(res) {
+    if (res.message.user.name !== "YonshLin") {
+      return;
+    }
+
+    rooms = new Map();
+    save();
+    sendMessage(res, messagePrefix + 'All rooms removed.');
+  }
+
   robot.brain.on('loaded', function() {
     if (!firstTime) {
       return;
@@ -345,6 +355,9 @@ module.exports = function(robot) {
             break;
           case "unsubscribeall":
             unsubscribeAll(res);
+            break;
+          case "removeAllRooms":
+            removeAllRooms(res);
             break;
           default:
             sendUsage(res);
