@@ -334,8 +334,6 @@ module.exports = function(robot) {
       msg += room.id + '\n';
     }
 
-    rooms = new Map();
-    save();
     sendMessage(res, msg);
   }
 
