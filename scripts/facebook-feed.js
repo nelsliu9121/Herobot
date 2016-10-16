@@ -8,6 +8,9 @@
 //
 // Author:
 //   Yonsh Lin <yonsh@live.com>
+//
+// Todos:
+//   Cache facebook pages
 
 var request = require('request');
 var jsdom = require('jsdom');
@@ -321,6 +324,19 @@ module.exports = function(robot) {
     sendMessage(res, messagePrefix + 'All rooms removed.');
   }
 
+  function showAllRooms(res) {
+    if (res.message.user.name !== "YonshLin") {
+      return
+    }
+
+    var msg = messagePrefix + 'Rooms:\n';
+    for (var room of rooms.values()) {
+      msg += room.id + '\n';
+    }
+
+    sendMessage(res, msg);
+  }
+
   robot.brain.on('loaded', function() {
     if (!firstTime) {
       return;
@@ -358,6 +374,9 @@ module.exports = function(robot) {
             break;
           case "removeallrooms":
             removeAllRooms(res);
+            break;
+          case "showallrooms":
+            showAllRooms(res);
             break;
           default:
             sendUsage(res);
