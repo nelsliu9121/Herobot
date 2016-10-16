@@ -9,6 +9,10 @@ var roomId = process.env.HUBOT_TELEGRAM_ANONYMOUS_ROOM_ID;
 if (roomId != null) {
   module.exports = function(robot) {
     robot.respond(/anon /i, function(res){
+      if (roomId === res.message.room) {
+        return;
+      }
+
       var msg = res.message.text;
       msg = msg.substring(msg.indexOf("anon ") + 5);
 
