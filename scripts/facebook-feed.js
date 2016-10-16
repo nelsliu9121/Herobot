@@ -1,5 +1,3 @@
-'use strict'
-
 // Description:
 //   Facebook Feed
 //
@@ -12,6 +10,10 @@
 //
 // Todos:
 //   Cache facebook pages
+//   Add post context to story type posts
+//   Show image only for image type posts
+
+'use strict'
 
 var request = require('request');
 var jsdom = require('jsdom');
