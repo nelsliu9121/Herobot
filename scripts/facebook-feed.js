@@ -356,7 +356,7 @@ module.exports = function(robot) {
           case "unsubscribeall":
             unsubscribeAll(res);
             break;
-          case "removeAllRooms":
+          case "removeallrooms":
             removeAllRooms(res);
             break;
           default:
