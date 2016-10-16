@@ -137,6 +137,7 @@ var Subscription = (function() {
           return true;
         } else {
           robot.logger.warning(logPrefix + "Can't find page " + self.page);
+          robot.logger.warning(logPrefix + 'Body:\n' + body);
           self.room.removeSubscription(self.page);
           robot.logger.info('Sending message to room: ' + roomId);
           robot.emit(
