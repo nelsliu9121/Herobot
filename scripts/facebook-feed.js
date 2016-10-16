@@ -315,7 +315,7 @@ module.exports = function(robot) {
     load();
 
     checkSubscriptions();
-    setInterval(checkSubscriptions, 30000);
+    setInterval(checkSubscriptions, process.env.HUBOT_TELEGRAM_FACEBOOK_FEED_INTERVAL || 120000);
 
     robot.respond(/fbfeed(.*)/i, function(res) {
       var args = res.match[1].split(' ');
