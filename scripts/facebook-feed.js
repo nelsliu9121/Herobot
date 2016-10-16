@@ -21,6 +21,7 @@ var facebookURL = 'https://facebook.com';
 var facebookMobileURL = 'https://m.facebook.com';
 var logPrefix = "Facebook Feed: "
 var messagePrefix = "*Facebook Feed:*\n\n"
+var admin = "YonshLin"
 
 var Subscription = (function() {
   function Subscription(room, page, name, lastLink, imageOnly) {
@@ -58,7 +59,7 @@ var Subscription = (function() {
     return queryDict;
   }
 
-  Subscription.prototype.fetch = function(robot) {
+  Subscription.prototype.fetch = function(robot, silent) {
     var self = this;
     var url = facebookMobileURL + '/' + self.page;
     return request({
@@ -107,26 +108,28 @@ var Subscription = (function() {
             }
           }
 
-          for (var i = newPostIndex; i >= 1; i--) {
-            if (self.imageOnly && result[i].postType != 'photo') {
-              continue;
-            }
+          if (!silent) {
+            for (var i = newPostIndex; i >= 1; i--) {
+              if (self.imageOnly && result[i].postType != 'photo') {
+                continue;
+              }
 
-            var link = result[i].link;
-            robot.logger.info('Sending message to room: ' + roomId);
-            robot.emit(
-              'telegram:invoke',
-              'sendMessage', {
-                chat_id: roomId,
-                text: '[' + self.name + '](' + facebookURL + link + ')',
-                parse_mode: 'Markdown',
-                disable_notification: 'true'
-              }, function (error, response) {
-                if (error) {
-                  robot.logger.error(error);
-                }
-                robot.logger.debug(response);
-            });
+              var link = result[i].link;
+              robot.logger.info('Sending message to room: ' + roomId);
+              robot.emit(
+                'telegram:invoke',
+                'sendMessage', {
+                  chat_id: roomId,
+                  text: '[' + self.name + '](' + facebookURL + link + ')',
+                  parse_mode: 'Markdown',
+                  disable_notification: 'true'
+                }, function (error, response) {
+                  if (error) {
+                    robot.logger.error(error);
+                  }
+                  robot.logger.debug(response);
+              });
+            }
           }
 
           self.lastLink = result[1].link;
@@ -268,6 +271,28 @@ module.exports = function(robot) {
     }
   }
 
+  function subscribeWithRoom(res, page, imageOnly, roomId) {
+    if (res.message.user.name !== admin || !roomId) {
+      return;
+    }
+
+    var id = roomId;
+    var room = rooms.get(id);
+
+    if (room == undefined) {
+      room = new Room(id);
+      rooms.set(id, room);
+    }
+
+    var subscription = room.addSubscription(page);
+    if (subscription != null) {
+      sendMessage(res, messagePrefix + 'Subscribing to `' + page + '` with room `' + id + '`.');
+      subscription.imageOnly = imageOnly;
+      subscription.fetch(robot, true);
+      setTimeout(save, 5000);
+    }
+  }
+
   function unsubscribePage(res, page) {
     var room = rooms.get(res.message.room);
 
@@ -315,7 +340,7 @@ module.exports = function(robot) {
   }
 
   function removeAllRooms(res) {
-    if (res.message.user.name !== "YonshLin") {
+    if (res.message.user.name !== admin) {
       return;
     }
 
@@ -325,7 +350,7 @@ module.exports = function(robot) {
   }
 
   function showAllRooms(res) {
-    if (res.message.user.name !== "YonshLin") {
+    if (res.message.user.name !== admin) {
       return
     }
 
@@ -358,6 +383,9 @@ module.exports = function(robot) {
             break;
           case "unsubscribe":
             unsubscribePage(res, args[2]);
+            break;
+          case "subscribewithroom":
+            subscribeWithRoom(res, args[2], args[3] && args[3].toLowerCase() == '-i', args[4]);
             break;
           default:
             sendUsage(res);
