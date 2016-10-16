@@ -1,6 +1,5 @@
-/**
- * A slave who is only loyal to Master Yonsh.
- */
+// Description:
+//   A slave who is only loyal to Master Yonsh.
 
 module.exports = function(robot) {
   robot.respond(/slave/i, function(res){
