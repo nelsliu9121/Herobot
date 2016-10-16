@@ -2,8 +2,6 @@
 
 /**
  * Facebook Feed
- * TODO: Remove subscription, show all subscriptions, remove room
- * TODO: Option - Only fetch posts with images
  */
 
 var request = require('request');
@@ -13,13 +11,16 @@ var jquery = 'https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js'
 var roomDataPath = 'github.nelsliu9121.herobot/facebook-feed/rooms';
 var facebookURL = 'https://facebook.com';
 var facebookMobileURL = 'https://m.facebook.com';
+var logPrefix = "Facebook Feed: "
+var messagePrefix = "*Facebook Feed:*\n\n"
 
 var Subscription = (function() {
-  function Subscription(room, page, name, lastLink) {
+  function Subscription(room, page, name, lastLink, imageOnly) {
     this.room = room;
     this.page = page;
     this.name = name || '';
     this.lastLink = lastLink || '';
+    this.imageOnly = imageOnly || false;
   }
 
   function scrape(body, selectors, callback) {
@@ -59,7 +60,7 @@ var Subscription = (function() {
       }
     }, function(err, res, body) {
       if (err) {
-        robot.logger.warning("Errors getting url: " + url);
+        robot.logger.warning(logPrefix + "Errors getting url: " + url);
         return false;
       }
 
@@ -69,12 +70,12 @@ var Subscription = (function() {
       }
 
       return scrape(body, selectors, function(result) {
+        var roomId = self.room.id;
         if (result[1].text().trim() !== '') {
           self.name = result[0].text().trim();
           var newPostIndex = result.length - 1;
           for (var i = 1; i < result.length; i++) {
             var link = result[i].attr('href');
-            var roomId = self.room.id;
             var path = link.split('?')[0];
             var subPaths = path.split('/');
 
@@ -82,11 +83,13 @@ var Subscription = (function() {
               if (subPaths.length > 2) {
                 if (subPaths[2] === 'photos') {
                   link = path;
+                  result[i].postType = 'photo';
                 }
               }
             } else if (subPaths[1] === 'story.php') {
               var params = getParameters(link);
               link = '/' + self.page + '/posts/' + params['story_fbid'];
+              result[i].postType = 'story';
             }
 
             result[i].link = link;
@@ -97,6 +100,10 @@ var Subscription = (function() {
           }
 
           for (var i = newPostIndex; i >= 1; i--) {
+            if (self.imageOnly && result[i].postType != 'photo') {
+              continue;
+            }
+
             var link = result[i].link;
             robot.logger.info('Sending message to room: ' + roomId);
             robot.emit(
@@ -104,23 +111,35 @@ var Subscription = (function() {
               'sendMessage', {
                 chat_id: roomId,
                 text: '[' + self.name + '](' + facebookURL + link + ')',
-                parse_mode: 'Markdown'
+                parse_mode: 'Markdown',
+                disable_notification: true
               }, function (error, response) {
                 if (error) {
                   robot.logger.error(error);
                 }
                 robot.logger.debug(response);
             });
-
-            if (i == 1) {
-              self.lastLink = link;
-            }
           }
+
+          self.lastLink = result[1].link;
 
           return true;
         } else {
-          robot.logger.warning("Facebook Feed: Can't find page " + self.page);
+          robot.logger.warning(logPrefix + "Can't find page " + self.page);
           self.room.removeSubscription(self.page);
+          robot.logger.info('Sending message to room: ' + roomId);
+          robot.emit(
+            'telegram:invoke',
+            'sendMessage', {
+              chat_id: roomId,
+              text: messagePrefix + "Unable to find `" + self.page + "`. Unsubscribed.",
+              parse_mode: 'Markdown'
+            }, function (error, response) {
+              if (error) {
+                robot.logger.error(error);
+              }
+              robot.logger.debug(response);
+          });
           return false;
         }
       });
@@ -169,6 +188,7 @@ module.exports = function(robot) {
         subscriptionData.push(subscription.page);
         subscriptionData.push(subscription.name);
         subscriptionData.push(subscription.lastLink);
+        subscriptionData.push(subscription.imageOnly);
         subscriptions.push(subscriptionData);
       }
       roomData.push(subscriptions);
@@ -188,26 +208,10 @@ module.exports = function(robot) {
         rooms.set(room.id, room);
         for (var j = 0; j < roomData[1].length; j++) {
           var subscriptionData = roomData[1][j];
-          var subscription = new Subscription(room, subscriptionData[0], subscriptionData[1], subscriptionData[2]);
+          var subscription = new Subscription(room, subscriptionData[0], subscriptionData[1], subscriptionData[2], subscriptionData[3]);
           room.subscriptions.set(subscription.page, subscription);
         }
       }
-    }
-  }
-
-  function subscribePage(res, page) {
-    var id = res.message.room;
-    var room = rooms.get(id);
-
-    if (room == undefined) {
-      room = new Room(id);
-      rooms.set(id, room);
-    }
-
-    var subscription = room.addSubscription(page);
-    if (subscription != null) {
-      subscription.fetch(robot);
-      setTimeout(save, 5000);
     }
   }
 
@@ -221,6 +225,87 @@ module.exports = function(robot) {
     setTimeout(save, 5000);
   }
 
+  function sendMessage(res, msg) {
+    var roomId = res.message.room;
+    robot.logger.info('Sending message to room: ' + roomId);
+    robot.emit(
+      'telegram:invoke',
+      'sendMessage', {
+        chat_id: roomId,
+        text: msg,
+        parse_mode: 'Markdown'
+      }, function (error, response) {
+        if (error) {
+          robot.logger.error(error);
+        }
+        robot.logger.debug(response);
+    });
+  }
+
+  function subscribePage(res, page, imageOnly) {
+    var id = res.message.room;
+    var room = rooms.get(id);
+
+    if (room == undefined) {
+      room = new Room(id);
+      rooms.set(id, room);
+    }
+
+    var subscription = room.addSubscription(page);
+    if (subscription != null) {
+      sendMessage(res, messagePrefix + 'Subscribing to `' + page + '`.');
+      subscription.imageOnly = imageOnly;
+      subscription.fetch(robot);
+      setTimeout(save, 5000);
+    }
+  }
+
+  function unsubscribePage(res, page) {
+    var room = rooms.get(res.message.room);
+
+    if (room == undefined) {
+      return;
+    }
+
+    room.removeSubscription(page);
+    sendMessage(res, messagePrefix + 'Unsubscribed from `' + page + '`.');
+  }
+
+  function showSubscriptions(res) {
+    var room = rooms.get(res.message.room);
+
+    var msg = messagePrefix + 'Subscriptions:'
+
+    if (room != undefined) {
+      for (var subscription of room.subscriptions.values()) {
+        msg += '\n' + subscription.page + ' - ' + subscription.name;
+        if (subscription.imageOnly) {
+          msg += ' (image only)';
+        }
+      }
+    }
+
+    sendMessage(res, msg);
+  }
+
+  function unsubscribeAll(res) {
+    rooms.delete(res.message.room);
+    sendMessage(res, messagePrefix + 'Unsubscribed from all subscriptions.');
+  }
+
+  function sendUsage(res) {
+    sendMessage(res, '*Facebook Feed Usage:*\n\n' +
+                     '`/fbfeed subscribe [page] [-i]`\n' +
+                     '      Subscribe to `[page]`. (Optional: -i fetch image only)\n' +
+                     '      Example: `/fbfeed subscribe kobeengineer -i`\n\n' +
+                     '`/fbfeed unsubscribe [page]`\n' +
+                     '      Unsubscribe from `[page]`.\n\n' +
+                     '`/fbfeed showSubscriptions`\n' +
+                     '      Show current subscriptions.\n\n' +
+                     '`/fbfeed unsubscribeAll`\n' +
+                     '      Unsubscribe from all subscriptions.');
+  }
+
   robot.brain.on('loaded', function() {
     if (!firstTime) {
       return;
@@ -232,12 +317,36 @@ module.exports = function(robot) {
     checkSubscriptions();
     setInterval(checkSubscriptions, 30000);
 
-    robot.hear(/fbfeed (.*)/i, function(res) {
+    robot.respond(/fbfeed(.*)/i, function(res) {
       var args = res.match[1].split(' ');
-      if (args[0] === "subscribe") {
-        if (args.length > 1) {
-          subscribePage(res, args[1]);
+      if (args.length > 2) {
+        args[1] = args[1].toLowerCase();
+        switch (args[1]) {
+          case "subscribe":
+            subscribePage(res, args[2], args[3] && args[3].toLowerCase() == '-i');
+            break;
+          case "unsubscribe":
+            unsubscribePage(res, args[2]);
+            break;
+          default:
+            sendUsage(res);
+            break;
         }
+      } else if (args.length > 1) {
+        args[1] = args[1].toLowerCase();
+        switch (args[1]) {
+          case "showsubscriptions":
+            showSubscriptions(res);
+            break;
+          case "unsubscribeall":
+            unsubscribeAll(res);
+            break;
+          default:
+            sendUsage(res);
+            break;
+        }
+      } else {
+        sendUsage(res);
       }
     });
   });
