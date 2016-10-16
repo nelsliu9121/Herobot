@@ -4,6 +4,7 @@
 //   Facebook Feed
 //
 // Configuration:
+//   HUBOT_TELEGRAM_FACEBOOK_FEED_ADMIN: required, admin's telegram account name, e.g. YonshLin
 //   HUBOT_TELEGRAM_FACEBOOK_FEED_INTERVAL: optional, defaults to 120000 (2 minutes)
 //
 // Author:
@@ -19,9 +20,9 @@ var jquery = 'https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js'
 var roomDataPath = 'github.nelsliu9121.herobot/facebook-feed/rooms';
 var facebookURL = 'https://facebook.com';
 var facebookMobileURL = 'https://m.facebook.com';
-var logPrefix = "Facebook Feed: "
-var messagePrefix = "*Facebook Feed:*\n\n"
-var admin = "YonshLin"
+var logPrefix = "Facebook Feed: ";
+var messagePrefix = "*Facebook Feed:*\n\n";
+var admin = process.env.HUBOT_TELEGRAM_FACEBOOK_FEED_ADMIN;
 
 var Subscription = (function() {
   function Subscription(room, page, name, lastLink, imageOnly) {
@@ -187,7 +188,6 @@ var Room = (function() {
 })();
 
 module.exports = function(robot) {
-  var linkDelay = 30;
   var firstTime = true;
   var rooms;
 
