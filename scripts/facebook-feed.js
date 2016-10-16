@@ -283,9 +283,9 @@ module.exports = function(robot) {
 
     if (room != undefined) {
       for (var subscription of room.subscriptions.values()) {
-        msg += '\n' + subscription.page + ' - ' + subscription.name;
+        msg += '\n`' + subscription.page + '` - ' + subscription.name;
         if (subscription.imageOnly) {
-          msg += ' (image only)';
+          msg += ' _(image only)_';
         }
       }
     }
@@ -301,7 +301,7 @@ module.exports = function(robot) {
   function sendUsage(res) {
     sendMessage(res, '*Facebook Feed Usage:*\n\n' +
                      '`/fbfeed subscribe [page] [-i]`\n' +
-                     '      Subscribe to `[page]`. (Optional: -i fetch image only)\n' +
+                     '      Subscribe to `[page]`. (Optional: -i _fetch image only_)\n' +
                      '      Example: `/fbfeed subscribe kobeengineer -i`\n\n' +
                      '`/fbfeed unsubscribe [page]`\n' +
                      '      Unsubscribe from `[page]`.\n\n' +
