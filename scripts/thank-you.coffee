@@ -28,7 +28,9 @@ response = [
 	"it’s nothing",
 	"think nothing of it",
 	"no, no. thank you!",
-	"sure thing"
+	"sure thing",
+	"your wish is my command",
+	"pleasure is all mine"
 ]
 
 module.exports = (robot) ->
