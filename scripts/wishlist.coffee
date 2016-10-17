@@ -45,24 +45,18 @@ class Wish
 		template += " \u2717" if @rejected
 		return template
 
-	toHash: ->
-		{
-			id: @id
-			wish: @wish
-			wisher: @wisher
-			fulfiller: @fulfiller
-			fulfilled: @fulfilled
-			assignee: @assignee
-			rejector: @rejector
-			rejected: @rejected
-		}
-
 module.exports = (robot) ->
 	robot.brain.on "loaded", =>
-		robot.brain.data.wish_database = {
-			next_id: 0,
-			wishes: []
-		} if robot.brain.data.wish_database is undefined
+		if robot.brain.data.wish_database is undefined
+			robot.brain.data.wish_database = {
+				next_id: 0,
+				wishes: []
+			}
+		else
+			wishes = []
+			for wish in robot.brain.data.wish_database.wishes
+				wishes.push new Wish(wish)
+			robot.brain.data.wish_database.wishes = wishes
 
 	robot.hear /make wish\s(.*)$/i, (res) ->
 		if res.match[1]
@@ -74,7 +68,7 @@ module.exports = (robot) ->
 				id: robot.brain.data.wish_database.next_id++
 				wish: res.match[1]
 				wisher: res.message.user.name
-			robot.brain.data.wish_database.wishes.push wish.toHash()
+			robot.brain.data.wish_database.wishes.push wish
 			robot.brain.save()
 			res.send "Your wish will be fulfilled."
 		else
@@ -93,8 +87,7 @@ module.exports = (robot) ->
 
 	robot.hear /list wish(es)?/i, (res) ->
 		for wish in robot.brain.data.wish_database.wishes
-			_w = new Wish(wish)
-			res.send _w.toString()
+			res.send wish.toString()
 
 	robot.hear /fulfill wish\s(\d+)/i, (res) ->
 		isHit = false
@@ -103,10 +96,9 @@ module.exports = (robot) ->
 				if wish.fulfilled is true
 					res.send "The wish is already fulfilled."
 					break
-				_w = new Wish(wish)
-				_w.fulfill res.message.user.name
+				wish.fulfill res.message.user.name
 				robot.brain.save()
-				res.send _w.wisher + ", your wish is fulfilled by " + res.message.user.name
+				res.send wish.wisher + ", your wish is fulfilled by " + res.message.user.name
 				isHit = true
 				break
 		res.send "There's no wish to fulfill." unless isHit
@@ -115,8 +107,7 @@ module.exports = (robot) ->
 		isHit = false
 		for wish in robot.brain.data.wish_database.wishes
 			if wish.id is parseInt(res.match[1])
-				_w = new Wish(wish)
-				_w.assign res.match[2]
+				wish.assign res.match[2]
 				robot.brain.save()
 				res.send "The wish will be fulfilled by @" + res.match[2]
 				isHit = true
@@ -127,10 +118,9 @@ module.exports = (robot) ->
 		isHit = false
 		for wish in robot.brain.data.wish_database.wishes
 			if wish.id is parseInt(res.match[1])
-				_w = new Wish(wish)
-				_w.assign res.message.user.name
+				wish.assign res.message.user.name
 				robot.brain.save()
-				res.send "@#{res.message.user.name} just make a promise to make @#{_w.wisher}'s wish come true."
+				res.send "@#{res.message.user.name} just make a promise to make @#{wish.wisher}'s wish come true."
 				isHit = true
 				break
 		res.send "There's no such wish." unless isHit
