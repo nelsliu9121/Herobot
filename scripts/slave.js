@@ -28,7 +28,7 @@ module.exports = function(robot) {
 		res.send("How may I be at your service, " + master + "?");
 	});
 
-	robot.respond(/call me\s+(\w+)?/i, function(res){
+	robot.respond(/call me\s+?(.*)/i, function(res){
 		if (res.match[1]) {
 			robot.brain.data.master_database[res.message.user.name] = res.match[1];
 			res.send("Yes, I will call you "+ res.match[1] + " from now on.");
