@@ -95,10 +95,11 @@ module.exports = (robot) ->
 			if wish.id is parseInt(res.match[1])
 				if wish.fulfilled is true
 					res.send "The wish is already fulfilled."
+					isHit = true
 					break
 				wish.fulfill res.message.user.name
 				robot.brain.save()
-				res.send wish.wisher + ", your wish is fulfilled by " + res.message.user.name
+				res.send "@#{wish.wisher}, your wish is fulfilled by @#{res.message.user.name}"
 				isHit = true
 				break
 		res.send "There's no wish to fulfill." unless isHit
