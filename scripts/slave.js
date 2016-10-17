@@ -22,7 +22,7 @@ module.exports = function(robot) {
 		res.send(msg);
 	});
 
-	robot.respond(/summon/i, function(res){
+	robot.hear(/dammit slave/i, function(res){
 		var master = robot.brain.data.master_database[res.message.user.name] || "Master";
 
 		res.send("How may I be at your service, " + master + "?");
