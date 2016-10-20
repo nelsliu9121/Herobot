@@ -24,8 +24,6 @@ unspeakables = [
 ]
 
 module.exports = (robot) ->
-	unspeakableExp = new RegExp(unspeakables.join("|"), "i")
-
 	robot.brain.on "loaded", =>
 		if robot.brain.data.swearjar_database is undefined
 			robot.brain.data.swearjar_database = {
@@ -33,6 +31,7 @@ module.exports = (robot) ->
 				checkbooks: {},
 				unspeakables: unspeakables
 			}
+		unspeakableExp = new RegExp(robot.brain.data.swearjar_database.unspeakables.join("|"), "i")
 
 	newCheck = (who, amount) ->
 		robot.brain.data.swearjar_database.checkbooks[who] = [] if robot.brain.data.swearjar_database.checkbooks[who] is undefined
@@ -51,13 +50,13 @@ module.exports = (robot) ->
 			text: "@#{res.message.user.name}講髒話要罰你付#{check}元到髒話桶裡面！"
 			reply_to_message_id: res.message.id
 
-	robot.respond /swearjar accuse\s(@[a-zA-Z0-9\_]+)/, (res) ->
+	robot.respond /swearjar accuse\s(@.*)/, (res) ->
 		check = (Math.random() * 10).toFixed(2)
 		newCheck res.message.user.name, check
 		res.reply "我知道了，@#{res.match[1]}壞壞！"
 		res.send "@#{res.match[1]}！你講髒話要罰你付#{check}元到髒話桶裡面！"
 
-	robot.respond /swearjar list\s?@([a-zA-Z0-9\_]+)/i, (res) ->
+	robot.respond /swearjar list\s?(.*)+?/i, (res) ->
 		if res.match[1]
 			checkbook = robot.brain.data.swearjar_database.checkbooks[res.match[1]]
 			if checkbook is undefined
