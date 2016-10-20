@@ -24,7 +24,7 @@ unspeakables = [
 ]
 
 module.exports = (robot) ->
-	unspeakableExp = new RegExp("["+unspeakables.join(",")+"]", "i")
+	unspeakableExp = new RegExp(unspeakables.join("|"), "i")
 
 	robot.brain.on "loaded", =>
 		if robot.brain.data.swearjar_database is undefined
