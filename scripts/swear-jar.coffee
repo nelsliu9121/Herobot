@@ -23,6 +23,8 @@ unspeakables = [
 	"賤"
 ]
 
+unspeakableExp = new RegExp(unspeakables.join("|"), "i")
+
 module.exports = (robot) ->
 	robot.brain.on "loaded", =>
 		if robot.brain.data.swearjar_database is undefined
@@ -53,8 +55,8 @@ module.exports = (robot) ->
 	robot.respond /swearjar accuse\s(@.*)/, (res) ->
 		check = (Math.random() * 10).toFixed(2)
 		newCheck res.message.user.name, check
-		res.reply "我知道了，@#{res.match[1]}壞壞！"
-		res.send "@#{res.match[1]}！你講髒話要罰你付#{check}元到髒話桶裡面！"
+		res.reply "我知道了，#{res.match[1]}壞壞！"
+		res.send "#{res.match[1]}！你講髒話要罰你付#{check}元到髒話桶裡面！"
 
 	robot.respond /swearjar list\s?(.*)+?/i, (res) ->
 		if res.match[1]
