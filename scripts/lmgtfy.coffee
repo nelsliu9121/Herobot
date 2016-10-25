@@ -15,6 +15,9 @@
 
 module.exports = (robot) ->
 	robot.respond /lmgtfy?\s?(?:@(\w*))? (.*)/i, (res) ->
-		res.emit "telegram:invoke", "sendMessage", chat_id: "@#{res.match[1]}"
-		text: "http://lmgtfy.com/?q=#{escape(res.match[2])}"
-		parse_mode: "markdown"
+		if res.match[1]
+			res.emit "telegram:invoke", "sendMessage",
+				chat_id: "@#{res.match[1]}"
+				text: "http://lmgtfy.com/?q=#{escape(res.match[2])}"
+		else
+			res.send "http://lmgtfy.com/?q=#{escape(res.match[2])}"
